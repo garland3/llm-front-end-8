@@ -1,0 +1,41 @@
+{
+  "id": "file_ops",
+  "name": "File Operations",
+  "description": "Read, write, and manipulate files on the system",
+  "exclusive": true,
+  "required_group": "admin",
+  "resources": [
+    {
+      "type": "template",
+      "name": "file_read",
+      "description": "Template for reading files",
+      "schema": {
+        "path": "string",
+        "encoding": "string"
+      }
+    },
+    {
+      "type": "template",
+      "name": "file_write",
+      "description": "Template for writing files",
+      "schema": {
+        "path": "string",
+        "content": "string",
+        "encoding": "string",
+        "create_dirs": "boolean"
+      }
+    }
+  ],
+  "templates": [
+    {
+      "name": "read_file",
+      "description": "Read content from a file",
+      "example": "/path/to/file.txt"
+    },
+    {
+      "name": "write_file",
+      "description": "Write content to a file",
+      "example": "Write 'Hello World' to /path/to/output.txt"
+    }
+  ]
+}

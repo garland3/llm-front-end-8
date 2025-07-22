@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Frontend</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="stylesheet" href="styles/chat.css">
+    <link rel="stylesheet" href="styles/tools.css">
+</head>
+<body>
+    <div id="app">
+        <header class="header">
+            <h1>LLM Frontend</h1>
+            <div class="user-info">
+                <span id="user-email"></span>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <aside class="sidebar">
+                <div class="llm-selection">
+                    <h3>LLM Provider</h3>
+                    <select id="llm-provider" class="llm-selector">
+                        <option value="">Select LLM...</option>
+                    </select>
+                </div>
+
+                <div class="tools-section">
+                    <h3>Tools</h3>
+                    <div id="exclusive-tools" class="tool-group">
+                        <h4>Exclusive Tools</h4>
+                    </div>
+                    <div id="multiple-tools" class="tool-group">
+                        <h4>Multiple Tools</h4>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="chat-container">
+                <div id="chat-messages" class="chat-messages"></div>
+                <div class="chat-input-container">
+                    <textarea id="chat-input" placeholder="Type your message..." rows="3"></textarea>
+                    <button id="send-button" class="send-button">Send</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="js/utils/websocket.js"></script>
+    <script src="js/utils/api.js"></script>
+    <script src="js/components/chat.js"></script>
+    <script src="js/components/llm-selector.js"></script>
+    <script src="js/components/tools.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

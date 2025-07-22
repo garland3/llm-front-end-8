@@ -1,0 +1,30 @@
+{
+  "id": "calculator",
+  "name": "Calculator",
+  "description": "Perform mathematical calculations and expressions",
+  "exclusive": false,
+  "required_group": "default",
+  "resources": [
+    {
+      "type": "template",
+      "name": "calculation",
+      "description": "Template for mathematical calculations",
+      "schema": {
+        "expression": "string",
+        "precision": "integer"
+      }
+    }
+  ],
+  "templates": [
+    {
+      "name": "basic_math",
+      "description": "Basic mathematical operations",
+      "example": "2 + 2 * 3"
+    },
+    {
+      "name": "advanced_math",
+      "description": "Advanced mathematical functions",
+      "example": "sin(pi/2) + log(10)"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+claude "Look at the instructions2.md and implement. Keep working until done. "  --dangerously-skip-permissions

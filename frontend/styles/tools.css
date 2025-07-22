@@ -1,0 +1,93 @@
+.tool-item {
+    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background-color: #fafafa;
+    transition: all 0.2s;
+}
+
+.tool-item:hover {
+    border-color: #3498db;
+    background-color: #f8f9fa;
+}
+
+.tool-item.selected {
+    border-color: #3498db;
+    background-color: #e3f2fd;
+}
+
+.tool-item.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.tool-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.tool-input {
+    margin-right: 0.5rem;
+}
+
+.tool-name {
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.tool-description {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+    margin-left: 1.25rem;
+}
+
+.tool-auth-required {
+    font-size: 0.8rem;
+    color: #e67e22;
+    margin-left: auto;
+}
+
+.exclusive-tool {
+    position: relative;
+}
+
+.exclusive-tool input[type="radio"] {
+    accent-color: #3498db;
+}
+
+.multiple-tool input[type="checkbox"] {
+    accent-color: #3498db;
+}
+
+.tool-status {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-left: 0.5rem;
+}
+
+.tool-status.available {
+    background-color: #27ae60;
+}
+
+.tool-status.unavailable {
+    background-color: #e74c3c;
+}
+
+.tool-status.loading {
+    background-color: #f39c12;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
