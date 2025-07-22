@@ -11,12 +11,16 @@ import httpx
 from app.auth.authorization import is_user_in_group
 from app.core.logging import log_exception
 from app.core.config import get_settings, get_project_root
+from app.services.mcp_service import MCPService
+from app.services.tool_schema_service import ToolSchemaService
 
 logger = logging.getLogger(__name__)
 
 class LLMService:
     def __init__(self):
         self.providers = {}
+        self.mcp_service = MCPService()
+        self.tool_schema_service = ToolSchemaService(self.mcp_service)
         self._load_models_config()
 
     def _load_models_config(self):
@@ -169,8 +173,10 @@ class LLMService:
         message: str,
         provider_id: str,
         tools_used: List[str],
-        user_email: str
+        user_email: str,
+        tool_schemas: List[Dict[str, Any]] = None
     ) -> str:
+        """NOT used by the steraming. So, likely not used. """
         try:
             provider = self.providers.get(provider_id)
             if not provider:
@@ -181,9 +187,9 @@ class LLMService:
                 raise ValueError(f"Access denied to provider {provider_id}")
             
             if provider['provider'] == 'test':
-                response = await self._mock_llm_call(message, provider, tools_used)
+                response = await self._mock_llm_call(message, provider, tools_used, tool_schemas)
             else:
-                response = await self._real_llm_call(message, provider, tools_used)
+                response = await self._real_llm_call(message, provider, tools_used, tool_schemas)
             
             logger.info(f"Generated response for {user_email} using {provider_id}")
             
@@ -197,9 +203,13 @@ class LLMService:
         self,
         message: str,
         provider_id: str,
-        tools_used: List[str],
-        user_email: str
+        tools_could_use: List[str],
+        user_email: str,
+        tool_schemas: List[Dict[str, Any]] = None
     ) -> AsyncGenerator[str, None]:
+        """
+        MAIN STREAMING RESPONSE GENERATION METHOD for the LLM calling. 
+        """
         try:
             provider = self.providers.get(provider_id)
             if not provider:
@@ -210,30 +220,32 @@ class LLMService:
                 raise ValueError(f"Access denied to provider {provider_id}")
             
             if provider['provider'] == 'test':
-                async for chunk in self._mock_llm_stream(message, provider, tools_used):
+                async for chunk in self._mock_llm_stream(message, provider, tools_could_use, tool_schemas):
                     yield chunk
             else:
-                async for chunk in self._real_llm_stream(message, provider, tools_used):
+                async for chunk in self._real_llm_stream(message, provider, tools_could_use, tool_schemas, user_email):
                     yield chunk
             
             logger.info(f"Generated streaming response for {user_email} using {provider_id}")
+            
             
         except Exception as e:
             log_exception(logger, e, f"generating streaming response for {user_email}")
             yield f"Error: {str(e)}"
 
-    async def _mock_llm_call(self, message: str, provider: Dict, tools_used: List[str]) -> str:
+    async def _mock_llm_call(self, message: str, provider: Dict, tools_used: List[str], tool_schemas: List[Dict[str, Any]] = None) -> str:
         await asyncio.sleep(1)
         
         tools_info = f" (using tools: {', '.join(tools_used)})" if tools_used else ""
+        schemas_info = f" with {len(tool_schemas)} tool schemas" if tool_schemas else ""
         
         return (
             f"This is a mock response from {provider['name']} {provider['model']} "
-            f"to your message: '{message}'{tools_info}. "
+            f"to your message: '{message}'{tools_info}{schemas_info}. "
             f"In a real implementation, this would connect to the actual LLM provider."
         )
 
-    async def _mock_llm_stream(self, message: str, provider: Dict, tools_used: List[str]) -> AsyncGenerator[str, None]:
+    async def _mock_llm_stream(self, message: str, provider: Dict, tools_used: List[str], tool_schemas: List[Dict[str, Any]] = None) -> AsyncGenerator[str, None]:
         tools_info = f" (using tools: {', '.join(tools_used)})" if tools_used else ""
         
         response_parts = [
@@ -248,37 +260,37 @@ class LLMService:
                 yield word + " "
                 await asyncio.sleep(0.1)
 
-    async def _real_llm_call(self, message: str, provider: Dict, tools_used: List[str]) -> str:
+    async def _real_llm_call(self, message: str, provider: Dict, tools_used: List[str], tool_schemas: List[Dict[str, Any]] = None) -> str:
         """Make actual API call to LLM provider"""
         try:
             if provider['provider'] == 'openai':
-                return await self._call_openai(message, provider, tools_used)
+                return await self._call_openai(message, provider, tools_used, tool_schemas)
             elif provider['provider'] == 'anthropic':
-                return await self._call_anthropic(message, provider, tools_used)
+                return await self._call_anthropic(message, provider, tools_used, tool_schemas)
             elif provider['provider'] == 'azure-openai':
-                return await self._call_azure_openai(message, provider, tools_used)
+                return await self._call_azure_openai(message, provider, tools_used, tool_schemas)
             elif provider['provider'] == 'ollama':
-                return await self._call_ollama(message, provider, tools_used)
+                return await self._call_ollama(message, provider, tools_used, tool_schemas)
             else:
                 raise ValueError(f"Unsupported provider: {provider['provider']}")
         except Exception as e:
             logger.error(f"Error calling {provider['provider']}: {str(e)}")
             raise
 
-    async def _real_llm_stream(self, message: str, provider: Dict, tools_used: List[str]) -> AsyncGenerator[str, None]:
+    async def _real_llm_stream(self, message: str, provider: Dict, tools_could_use: List[str], tool_schemas: List[Dict[str, Any]] = None, user_email: str = "system") -> AsyncGenerator[str, None]:
         """Make actual streaming API call to LLM provider"""
         try:
             if provider['provider'] == 'openai':
-                async for chunk in self._stream_openai(message, provider, tools_used):
+                async for chunk in self._stream_openai(message, provider, tools_could_use, tool_schemas, user_email):
                     yield chunk
             elif provider['provider'] == 'anthropic':
-                async for chunk in self._stream_anthropic(message, provider, tools_used):
+                async for chunk in self._stream_anthropic(message, provider, tools_could_use, tool_schemas):
                     yield chunk
             elif provider['provider'] == 'azure-openai':
-                async for chunk in self._stream_azure_openai(message, provider, tools_used):
+                async for chunk in self._stream_azure_openai(message, provider, tools_could_use, tool_schemas):
                     yield chunk
             elif provider['provider'] == 'ollama':
-                async for chunk in self._stream_ollama(message, provider, tools_used):
+                async for chunk in self._stream_ollama(message, provider, tools_could_use, tool_schemas):
                     yield chunk
             else:
                 raise ValueError(f"Unsupported provider: {provider['provider']}")
@@ -286,7 +298,7 @@ class LLMService:
             logger.error(f"Error streaming from {provider['provider']}: {str(e)}")
             yield f"Error: {str(e)}"
 
-    async def _call_openai(self, message: str, provider: Dict, tools_used: List[str]) -> str:
+    async def _call_openai(self, message: str, provider: Dict, tools_used: List[str], tool_schemas: List[Dict[str, Any]] = None) -> Any:
         """Call OpenAI API"""
         headers = {
             "Authorization": f"Bearer {provider['api_key']}",
@@ -302,14 +314,29 @@ class LLMService:
             "temperature": 0.7
         }
         
+        # Add tools if provided
+        if tool_schemas:
+            payload["tools"] = tool_schemas
+            payload["tool_choice"] = "auto"
+        
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(provider['model_url'], headers=headers, json=payload)
             response.raise_for_status()
             
             data = response.json()
-            return data['choices'][0]['message']['content']
+            message = data['choices'][0]['message']
+            
+            # Check if the model wants to call tools
+            if 'tool_calls' in message and message['tool_calls']:
+                # Return the message with tool calls for processing by the calling service
+                return {
+                    'content': message.get('content', ''),
+                    'tool_calls': message['tool_calls']
+                }
+            
+            return message['content']
 
-    async def _stream_openai(self, message: str, provider: Dict, tools_used: List[str]) -> AsyncGenerator[str, None]:
+    async def _stream_openai(self, message: str, provider: Dict, tools_could_use: List[str], tool_schemas: List[Dict[str, Any]] = None, user_email: str = "system") -> AsyncGenerator[str, None]:
         """Stream from OpenAI API"""
         headers = {
             "Authorization": f"Bearer {provider['api_key']}",
@@ -326,6 +353,13 @@ class LLMService:
             "stream": True
         }
         
+        # Add tools if provided
+        if tool_schemas:
+            payload["tools"] = tool_schemas
+            payload["tool_choice"] = "auto"
+        
+        tool_calls_buffer = {}  # Buffer to accumulate tool call data
+        
         async with httpx.AsyncClient(timeout=30.0) as client:
             async with client.stream("POST", provider['model_url'], headers=headers, json=payload) as response:
                 response.raise_for_status()
@@ -340,12 +374,90 @@ class LLMService:
                             data = json.loads(data_str)
                             if 'choices' in data and len(data['choices']) > 0:
                                 delta = data['choices'][0].get('delta', {})
+                                
+                                # Handle regular content streaming
                                 if 'content' in delta:
                                     yield delta['content']
+                                
+                                # Handle tool calls
+                                if 'tool_calls' in delta:
+                                    for tool_call_delta in delta['tool_calls']:
+                                        index = tool_call_delta.get('index', 0)
+                                        if index not in tool_calls_buffer:
+                                            tool_calls_buffer[index] = {
+                                                'id': '',
+                                                'type': 'function',
+                                                'function': {'name': '', 'arguments': ''}
+                                            }
+                                        
+                                        # Accumulate tool call data
+                                        if 'id' in tool_call_delta:
+                                            tool_calls_buffer[index]['id'] += tool_call_delta['id']
+                                        
+                                        if 'function' in tool_call_delta:
+                                            func_delta = tool_call_delta['function']
+                                            if 'name' in func_delta:
+                                                tool_calls_buffer[index]['function']['name'] += func_delta['name']
+                                            if 'arguments' in func_delta:
+                                                tool_calls_buffer[index]['function']['arguments'] += func_delta['arguments']
+                                
+                                # Check if streaming is finished and we have tool calls to execute
+                                finish_reason = data['choices'][0].get('finish_reason')
+                                if finish_reason == 'tool_calls' and tool_calls_buffer:
+                                    # Execute tool calls and stream results
+                                    async for tool_result_chunk in self._execute_and_stream_tool_calls(tool_calls_buffer, user_email):
+                                        yield tool_result_chunk
+                                        
                         except json.JSONDecodeError:
                             continue
 
-    async def _call_anthropic(self, message: str, provider: Dict, tools_used: List[str]) -> str:
+    async def _execute_and_stream_tool_calls(self, tool_calls_buffer: Dict[int, Dict[str, Any]], user_email: str = "system") -> AsyncGenerator[str, None]:
+        """Execute tool calls and stream the results to the user"""
+        
+        # Convert OpenAI tool call format for execution
+        tool_calls = []
+        for tool_call in tool_calls_buffer.values():
+            try:
+                function_name = tool_call['function']['name']
+                args = json.loads(tool_call['function']['arguments'])
+                tool_calls.append({
+                    'function_name': function_name,
+                    'arguments': args
+                })
+            except json.JSONDecodeError:
+                yield f"\n\n🚫 **Error**: Invalid tool arguments for {tool_call['function']['name']}\n\n"
+                continue
+        
+        if not tool_calls:
+            return
+        
+        # Stream tool execution information
+        yield f"\n\n🔧 **Executing {len(tool_calls)} tool call(s):**\n"
+        
+        for i, tool_call in enumerate(tool_calls, 1):
+            function_name = tool_call['function_name']
+            arguments = tool_call['arguments']
+            
+            # Stream tool call info
+            yield f"\n**{i}. Tool:** `{function_name}`\n"
+            yield f"**Arguments:** `{json.dumps(arguments)}`\n"
+            
+            try:
+                # Execute the tool using the proper tool schema service
+                result = await self.tool_schema_service.execute_tool_call(function_name, arguments, user_email)
+                
+                if result.get('success', False):
+                    yield f"**✅ Result:** {result.get('result', 'Success')}\n"
+                else:
+                    error = result.get('error', 'Unknown error')
+                    yield f"**❌ Error:** {error}\n"
+                    
+            except Exception as e:
+                yield f"**❌ Error:** {str(e)}\n"
+        
+        yield f"\n**Tool execution completed.**\n\n"
+
+    async def _call_anthropic(self, message: str, provider: Dict, tools_used: List[str], tool_schemas: List[Dict[str, Any]] = None) -> str:
         """Call Anthropic API"""
         headers = {
             "x-api-key": provider['api_key'],
@@ -368,7 +480,7 @@ class LLMService:
             data = response.json()
             return data['content'][0]['text']
 
-    async def _stream_anthropic(self, message: str, provider: Dict, tools_used: List[str]) -> AsyncGenerator[str, None]:
+    async def _stream_anthropic(self, message: str, provider: Dict, tools_used: List[str], tool_schemas: List[Dict[str, Any]] = None) -> AsyncGenerator[str, None]:
         """Stream from Anthropic API"""
         headers = {
             "x-api-key": provider['api_key'],
@@ -402,7 +514,7 @@ class LLMService:
                         except json.JSONDecodeError:
                             continue
 
-    async def _call_azure_openai(self, message: str, provider: Dict, tools_used: List[str]) -> str:
+    async def _call_azure_openai(self, message: str, provider: Dict, tools_used: List[str], tool_schemas: List[Dict[str, Any]] = None) -> str:
         """Call Azure OpenAI API"""
         headers = {
             "api-key": provider['api_key'],
@@ -424,7 +536,7 @@ class LLMService:
             data = response.json()
             return data['choices'][0]['message']['content']
 
-    async def _stream_azure_openai(self, message: str, provider: Dict, tools_used: List[str]) -> AsyncGenerator[str, None]:
+    async def _stream_azure_openai(self, message: str, provider: Dict, tools_used: List[str], tool_schemas: List[Dict[str, Any]] = None) -> AsyncGenerator[str, None]:
         """Stream from Azure OpenAI API"""
         headers = {
             "api-key": provider['api_key'],
@@ -459,7 +571,7 @@ class LLMService:
                         except json.JSONDecodeError:
                             continue
 
-    async def _call_ollama(self, message: str, provider: Dict, tools_used: List[str]) -> str:
+    async def _call_ollama(self, message: str, provider: Dict, tools_used: List[str], tool_schemas: List[Dict[str, Any]] = None) -> str:
         """Call Ollama API"""
         payload = {
             "model": provider['model_name'],
@@ -474,7 +586,7 @@ class LLMService:
             data = response.json()
             return data['response']
 
-    async def _stream_ollama(self, message: str, provider: Dict, tools_used: List[str]) -> AsyncGenerator[str, None]:
+    async def _stream_ollama(self, message: str, provider: Dict, tools_used: List[str], tool_schemas: List[Dict[str, Any]] = None) -> AsyncGenerator[str, None]:
         """Stream from Ollama API"""
         payload = {
             "model": provider['model_name'],

@@ -13,11 +13,33 @@ from app.api import chat, llm, mcp, auth, websocket
 setup_logging()
 logger = logging.getLogger(__name__)
 
+# Global MCP service instances for cleanup
+_global_mcp_services = []
+
+def register_mcp_service(mcp_service):
+    """Register an MCP service for global cleanup"""
+    _global_mcp_services.append(mcp_service)
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Application startup")
     yield
     logger.info("Application shutdown")
+    
+    # Close MCP clients on shutdown
+    try:
+        for mcp_service in _global_mcp_services:
+            await mcp_service.close_mcp_clients()
+        logger.info("MCP clients cleanup completed")
+    except Exception as e:
+        logger.error(f"Error during MCP cleanup: {str(e)}")
+
+# middlware for logging the request and route
+async def log_request(request: Request, call_next):
+    logger.info(f"Request: {request.method} {request.url.path}")
+    response = await call_next(request)
+    logger.info(f"Response: {response.status_code}")
+    return response
 
 def create_app() -> FastAPI:
     settings = get_settings()
@@ -36,6 +58,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # middlware for logging the request and  route 
+    app.middleware("http")(log_request)
+
     
     app.add_middleware(AuthMiddleware)
     

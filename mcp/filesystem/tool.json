@@ -1,0 +1,16 @@
+{
+  "id": "filesystem",
+  "name": "File System",
+  "description": "Safe file operations in playground directory",
+  "exclusive": false,
+  "required_group": "default",
+  "command": ["python", "-m", "mcp.filesystem.server"],
+  "resources": [
+    {
+      "uri": "playground_info",
+      "name": "Playground Information",
+      "description": "Information about the playground directory and capabilities"
+    }
+  ],
+  "templates": []
+}

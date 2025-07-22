@@ -1,0 +1,16 @@
+{
+  "id": "linear_regression",
+  "name": "Linear Regression",
+  "description": "Linear regression analysis and prediction tools",
+  "exclusive": false,
+  "required_group": "default",
+  "command": ["python", "-m", "mcp.linear_regression.server"],
+  "resources": [
+    {
+      "uri": "regression_guide",
+      "name": "Linear Regression Guide",
+      "description": "Guide for using linear regression tools and interpreting results"
+    }
+  ],
+  "templates": []
+}

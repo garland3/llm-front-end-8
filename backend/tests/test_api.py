@@ -51,7 +51,7 @@ class TestAPI:
         assert response.status_code == 400
 
     def test_mcp_validate_endpoint(self, client, auth_headers):
-        payload = {"tool_ids": ["calculator", "nonexistent"]}
+        payload = {"tool_ids": ["filesystem", "nonexistent"]}
         response = client.post("/api/mcp/validate", json=payload, headers=auth_headers)
         assert response.status_code == 200
         data = response.json()

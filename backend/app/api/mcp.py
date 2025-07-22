@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import List, Dict, Any
 
 from app.services.mcp_service import MCPService
+from app.services.tool_schema_service import ToolSchemaService
 from app.core.logging import log_exception
 
 logger = logging.getLogger(__name__)
@@ -12,8 +13,19 @@ router = APIRouter()
 class MCPValidationRequest(BaseModel):
     tool_ids: List[str]
 
+class ToolSchemaRequest(BaseModel):
+    tool_ids: List[str]
+
+class ToolExecutionRequest(BaseModel):
+    function_name: str
+    arguments: Dict[str, Any]
+
 def get_mcp_service() -> MCPService:
     return MCPService()
+
+def get_tool_schema_service() -> ToolSchemaService:
+    mcp_service = MCPService()
+    return ToolSchemaService(mcp_service)
 
 def get_user_email(request: Request) -> str:
     return getattr(request.state, 'user_email', 'unknown')
@@ -96,3 +108,61 @@ async def execute_tool(
     except Exception as e:
         log_exception(logger, e, f"executing tool {tool_id}")
         raise HTTPException(status_code=500, detail="Failed to execute tool")
+
+@router.post("/schemas")
+async def get_tool_schemas(
+    schema_request: ToolSchemaRequest,
+    request: Request,
+    tool_schema_service: ToolSchemaService = Depends(get_tool_schema_service),
+    user_email: str = Depends(get_user_email)
+) -> Dict[str, Any]:
+    """Get LLM-compatible tool schemas for the specified tools."""
+    try:
+        schemas = await tool_schema_service.get_tool_schemas_for_user(
+            schema_request.tool_ids, user_email
+        )
+        return {
+            "schemas": schemas,
+            "count": len(schemas),
+            "tool_ids": schema_request.tool_ids
+        }
+    except Exception as e:
+        log_exception(logger, e, "retrieving tool schemas")
+        raise HTTPException(status_code=500, detail="Failed to retrieve tool schemas")
+
+@router.get("/schemas/all")
+async def get_all_tool_schemas(
+    request: Request,
+    tool_schema_service: ToolSchemaService = Depends(get_tool_schema_service),
+    user_email: str = Depends(get_user_email)
+) -> Dict[str, Any]:
+    """Get all available tool schemas organized by MCP server."""
+    try:
+        all_schemas = await tool_schema_service.get_all_available_schemas(user_email)
+        return {
+            "schemas_by_tool": all_schemas,
+            "total_servers": len(all_schemas),
+            "total_schemas": sum(len(schemas) for schemas in all_schemas.values())
+        }
+    except Exception as e:
+        log_exception(logger, e, "retrieving all tool schemas")
+        raise HTTPException(status_code=500, detail="Failed to retrieve all tool schemas")
+
+@router.post("/execute")
+async def execute_tool_call(
+    execution_request: ToolExecutionRequest,
+    request: Request,
+    tool_schema_service: ToolSchemaService = Depends(get_tool_schema_service),
+    user_email: str = Depends(get_user_email)
+) -> Dict[str, Any]:
+    """Execute a tool call from an LLM response."""
+    try:
+        result = await tool_schema_service.execute_tool_call(
+            execution_request.function_name,
+            execution_request.arguments,
+            user_email
+        )
+        return result
+    except Exception as e:
+        log_exception(logger, e, f"executing tool call {execution_request.function_name}")
+        raise HTTPException(status_code=500, detail="Failed to execute tool call")

@@ -61,3 +61,7 @@ fi
 
 echo "--- Installation Complete ---"
 echo "Remember to configure API keys and restart your shell for changes to take effect."
+echo "claude mcp add-json "mcp-tavily-search" '{"command":"npx","args":["-y","mcp-tavily-search"],"env":{"TAVILY_API_KEY":"your-tavily-api-key"}}'"
+
+claude mcp add context7 -s user -- npx -y @upstash/context7-mcp@latest
+claude mcp add ddg-search -s user -- npx -y @oevortex/ddg_search@latest

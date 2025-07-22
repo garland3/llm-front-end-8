@@ -22,7 +22,7 @@ class TestChatService:
     @pytest.mark.asyncio
     async def test_process_message_with_tools(self):
         response = await self.chat_service.process_message(
-            "Calculate 2+2", "openai-gpt4", ["calculator"], "test@test.com"
+            "List files in playground", "openai-gpt4", ["filesystem"], "test@test.com"
         )
         assert 'content' in response
         assert 'tools_used' in response

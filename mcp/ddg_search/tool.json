@@ -1,0 +1,21 @@
+{
+  "id": "ddg_search",
+  "name": "DuckDuckGo Search",
+  "description": "Web search functionality using DuckDuckGo (text, news, images, videos)",
+  "exclusive": false,
+  "required_group": "default",
+  "command": ["python", "-m", "mcp.ddg_search.server"],
+  "resources": [
+    {
+      "uri": "search_guide",
+      "name": "Search Guide",
+      "description": "Comprehensive guide for using DuckDuckGo search tools and operators"
+    },
+    {
+      "uri": "region_codes",
+      "name": "Region Codes",
+      "description": "List of supported region codes for localized searches"
+    }
+  ],
+  "templates": []
+}

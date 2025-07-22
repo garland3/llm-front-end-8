@@ -16,10 +16,10 @@ class TestMCPService:
     @pytest.mark.asyncio
     async def test_validate_tool_access_valid_tools(self):
         validations = await self.mcp_service.validate_tool_access(
-            ["calculator"], "test@test.com"
+            ["filesystem"], "test@test.com"
         )
         assert len(validations) == 1
-        assert validations[0]['tool_id'] == "calculator"
+        assert validations[0]['tool_id'] == "filesystem"
         assert isinstance(validations[0]['has_access'], bool)
 
     @pytest.mark.asyncio
@@ -34,10 +34,10 @@ class TestMCPService:
 
     @pytest.mark.asyncio
     async def test_get_tool_details_valid(self):
-        if 'calculator' in self.mcp_service.tools:
-            tool = await self.mcp_service.get_tool_details("calculator", "test@test.com")
+        if 'filesystem' in self.mcp_service.tools:
+            tool = await self.mcp_service.get_tool_details("filesystem", "test@test.com")
             assert tool is not None
-            assert tool['id'] == "calculator"
+            assert tool['id'] == "filesystem"
 
     @pytest.mark.asyncio
     async def test_get_tool_details_invalid(self):
@@ -46,6 +46,6 @@ class TestMCPService:
 
     @pytest.mark.asyncio
     async def test_get_tool_resources(self):
-        if 'calculator' in self.mcp_service.tools:
-            resources = await self.mcp_service.get_tool_resources("calculator", "test@test.com")
+        if 'filesystem' in self.mcp_service.tools:
+            resources = await self.mcp_service.get_tool_resources("filesystem", "test@test.com")
             assert isinstance(resources, list)
